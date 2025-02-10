@@ -1,4 +1,7 @@
+#version 0.1
+
 import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import random
 import time
 from PIL import Image, ExifTags
@@ -6,6 +9,7 @@ import screeninfo
 import pygame
 import io
 import math
+import sys
 
 #Color palette if option to have squares is chosen
 COLOR_PALETTES = {
@@ -42,6 +46,8 @@ class ImageObject:
         self.target_size = target_size
         #store screen size
         self.screendim = (swid, shei)
+        #add a slight random speed adjustment to add variety
+        self.speed_adj = random.uniform(0.8,1.1)
         # set inital position off screen in a horizontal or vertical direciton
         direction = random.choice(["left", "right", "up", "down"])
         if direction == "left":
@@ -60,6 +66,8 @@ class ImageObject:
 
     #function to set outward transition positions
     def setout(self):
+        #re adjust speed
+        self.speed_adj = random.uniform(0.8,1.1)
         self.done = False
         # set outside position off screen in a horizontal or vertical direciton
         direction = random.choice(["left", "right", "up", "down"])
@@ -77,8 +85,8 @@ class ImageObject:
         if not self.done:
             cx, cy = self.current_pos
             tx, ty = self.target_pos
-            new_x = cx + (tx - cx) / ANIMATION_SPEED
-            new_y = cy + (ty - cy) / ANIMATION_SPEED
+            new_x = cx + (tx - cx) / (ANIMATION_SPEED * self.speed_adj)
+            new_y = cy + (ty - cy) / (ANIMATION_SPEED * self.speed_adj)
             self.current_pos = (new_x, new_y)
             if abs(tx - new_x) < 1 and abs(ty - new_y) < 1:
                 self.current_pos = self.target_pos
@@ -139,11 +147,17 @@ def scale_and_crop(image, target_size):
 def pyg_handle(clock):
     pygame.event.pump()
     clock.tick(TICK_SPEED)
-    
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            sys.exit()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                sys.exit()
 
 #run the slideshow
 def display_slideshow(image_info, display_resolution, interval=3, fullscreen=False, squares=True):
     pygame.init()
+    pygame.mouse.set_visible(False)
     # Set the screen size and windowed or not
     #pull the screen width and height
     swidth = display_resolution["width"]
@@ -160,9 +174,10 @@ def display_slideshow(image_info, display_resolution, interval=3, fullscreen=Fal
     images = list(image_info.keys())
     random.shuffle(images)
 
+    running = True
     
     #loop to run the slideshow
-    while True:
+    while running:
         #get the layout
         layout = random.choice(get_layouts(display_resolution))
         objects = []
