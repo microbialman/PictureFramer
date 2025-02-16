@@ -9,7 +9,6 @@ import screeninfo
 import pygame
 import math
 import sys
-import cv2
 
 #Color palette if option to have squares is chosen
 COLOR_PALETTES = {
@@ -29,6 +28,7 @@ COLOR_PALETTES = {
     ]
 }
 
+FOLDER_PATH = "Images"
 DISPLAY_TIME = 3
 #set to "All" for only coloured squares, "Some" for a mix of photos and squares, "None" for only photos
 SQUARES = "Some"
@@ -36,20 +36,14 @@ PALETTE = "Mondrian"
 BORDER_WIDTH = 10
 ANIMATION_SPEED = 15
 TICK_SPEED = 30
-#if on initialisation will be slower as faces are detected in each image to center cropping
-FACEDETECT = False
 FULLSCREEN = True
-
-FACEMODEL = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-)
 
 class ImageObject:
     #setup image
-    def __init__(self, img, target_pos, target_size, swid, shei, focus, is_color_square=False, color=None):
+    def __init__(self, img, target_pos, target_size, swid, shei, is_color_square=False, color=None):
         #load and trim the image
         if is_color_square == False:
-            self.img = scale_and_crop(img, target_size, focus)
+            self.img = scale_and_crop(img, target_size)
         #coorindate to end up at
         self.target_pos = target_pos
         #size in layout
@@ -108,32 +102,10 @@ class ImageObject:
         if self.is_color_square:
             pygame.draw.rect(screen, self.color, (pos[0], pos[1], self.target_size[0], self.target_size[1]))
         else:
-            #scale and crop to maintain aspect ratio
             screen.blit(self.img, (pos[0], pos[1], self.target_size[0], self.target_size[1]))
         #add border
         pygame.draw.rect(screen, (0, 0, 0), (pos[0], pos[1], self.target_size[0], self.target_size[1]), BORDER_WIDTH)
-
-#function to ID faces in an image
-def find_faces(file, fm=FACEMODEL):
-    img = cv2.imread(file)
-    resizer = 0.3
-    if img.shape[0] and  img.shape[1] <1000:
-        resizer = 1
-    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gray_img = cv2.resize(gray_img, (0,0), fx=resizer, fy=resizer)  
-    face = fm.detectMultiScale(
-        gray_img,  minNeighbors=4)
-    #return mean vector
-    if len(face)>0:
-            x_mean = int(sum(x+(w/2) for x, y,  w, h in face) / len(face))
-            y_mean = int(sum(y+(h/2) for x, y,  w, h in face) / len(face))
-            x_mean = x_mean * (1/resizer)
-            y_mean = y_mean * (1/resizer)
-            return(x_mean,y_mean)
-    else:
-        return(False)
-            
-        
+                    
 #store initial info on images for layout creation, try to detect faces to find a region to focus on
 def get_image_info(folder_path, F=False):
     print("Loading images...")
@@ -147,8 +119,7 @@ def get_image_info(folder_path, F=False):
             image_info[file_path] = {
                     "width": width,
                     "height": height,
-                    "orientation": "Portrait" if height > width else "Landscape",
-                    "focus": find_faces(file_path) if F==True else False
+                    "orientation": "Portrait" if height > width else "Landscape"
                 }
     return image_info
 
@@ -158,22 +129,15 @@ def get_display_resolution():
     return {"width": mon.width, "height": mon.height}
 
 #for overly large images dont skew dimensions just focus on center of image
-def scale_and_crop(image, target_size, focus):
+def scale_and_crop(image, target_size):
     img_w, img_h = image.get_size()
     target_w, target_h = target_size
     scale = max(target_w / img_w, target_h / img_h)
     new_size = (math.ceil(img_w * scale), math.ceil(img_h * scale))
     image = pygame.transform.smoothscale(image, new_size)
-    #if no faces center on the middle
-    if focus == False:
-        # Compute centered crop rectangle of exactly target_size
-        crop_x = (new_size[0] - target_w) // 2
-        crop_y = (new_size[1] - target_h) // 2
-    else:
-        focusper = (focus[0] // img_w , focus[1] // img_h)
-        focusadj = (new_size[0]*focusper[0], new_size[1]*focusper[1])
-        crop_x = focusadj[0] - (target_w // 2)
-        crop_y = focusadj[1] - (target_h // 2)
+    # Compute centered crop rectangle of exactly target_size
+    crop_x = (new_size[0] - target_w) // 2
+    crop_y = (new_size[1] - target_h) // 2
     # Clamp crop values to ensure the rectangle is within bounds.
     crop_x = max(0, min(crop_x, new_size[0] - target_w))
     crop_y = max(0, min(crop_y, new_size[1] - target_h))
@@ -238,11 +202,11 @@ def display_slideshow(image_info, display_resolution, interval=3, fullscreen=Fal
         for i, pos in enumerate(layout):
             if i in replace_indices:
                 color = random.choice(COLOR_PALETTES[PALETTE])
-                objects.append(ImageObject(None, pos["p"], pos["s"], swidth, sheight, False, is_color_square=True, color=color))
+                objects.append(ImageObject(None, pos["p"], pos["s"], swidth, sheight, is_color_square=True, color=color))
             else:
                 ipath = selected_images.pop()
                 img = pygame.image.load(ipath)
-                objects.append(ImageObject(img, pos["p"], pos["s"], swidth, sheight, image_info[ipath]["focus"]))
+                objects.append(ImageObject(img, pos["p"], pos["s"], swidth, sheight))
 
         #animate objects from their random start positions to their layout positions
         while not all(obj.done for obj in objects):
@@ -305,7 +269,6 @@ laylis = [
     [{"p":[0,0],"s":[0.6,0.6]},{"p":[0,0.6],"s":[0.3,0.4]},{"p":[0.3,0.6],"s":[0.3,0.4]},{"p":[0.6,0],"s":[0.4,0.3]},{"p":[0.6,0.3],"s":[0.4,0.7]}]
 ]
 
-folder_path = "Images"
-image_data = get_image_info(folder_path, F=FACEDETECT)
+image_data = get_image_info(FOLDER_PATH)
 display_resolution = get_display_resolution()
 display_slideshow(image_data, display_resolution, interval=DISPLAY_TIME, fullscreen=FULLSCREEN, squares=SQUARES)
