@@ -4,9 +4,9 @@ from PIL import Image, ExifTags, ImageOps
 
 #Rclone command to run to sync the G photos album
 RUN_RCLONE = True
-RCLONE_COMMAND = "clone sync Photo:album/Frame ~/Dev/PictureFrame/GPhotos"
-SOURCE_DR = "~/Dev/PictureFrame/GPhotos"
-TARGET_DR = "~/Dev/PictureFrame/Images"
+RCLONE_COMMAND = "rclone sync Photo:album/Frame ./GPhotos"
+SOURCE_DR = "GPhotos"
+TARGET_DR = "Images"
 
 def convert_images_to_jpeg(folder, targfolder):
     # Ensure the folder exists
