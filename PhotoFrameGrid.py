@@ -26,7 +26,7 @@ COLOR_PALETTES = {
     ]
 }
 
-FOLDER_PATH = "Images"
+FOLDER_PATH = os.getcwd()+"/Images"
 DISPLAY_TIME = 3
 #set to "All" for only coloured squares, "Some" for a mix of photos and squares, "None" for only photos
 SQUARES = "Some"
