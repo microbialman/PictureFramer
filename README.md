@@ -214,7 +214,7 @@ PRs welcome—especially for:
 
 ## 📜 License
 
-Add a `LICENSE` file (MIT recommended) before publishing.
+MIT
 
 ---
 
